@@ -1,0 +1,114 @@
+# -----------------------------------------------------------
+#   Sistema de Recomendação de Calcário - Manejo do Solo
+#   Autor: João
+#   Linguagem: Python
+#   Finalidade: Calcular recomendação de calagem usando:
+#       pH, CTC, Ca, Mg, K, profundidade, área, PRNT, V%
+# -----------------------------------------------------------
+
+# -----------------------------
+# FUNÇÕES DO SISTEMA
+# -----------------------------
+
+def classificar_acidez(pH):
+    if pH <= 6.0:
+        return "Solo ácido"
+    elif pH >= 7.2:
+        return "Solo alcalino"
+    elif pH >= 6.5:
+        return "Solo ideal / ligeiramente ácido"
+    else:
+        return "Zona intermediária"
+
+
+def calcular_saturacao_base(Ca, Mg, K, CTC):
+    # Conversão do K: mg/dm³ → cmolc/dm³ (dividido por 391)
+    SB = Ca + Mg + (K / 391)
+    V_atual = (SB / CTC) * 100
+    return SB, V_atual
+
+
+def necessidade_de_calagem(CTC, V_atual, V_desejado, PRNT):
+    """
+    Fórmula oficial:
+        NC (ton/ha) = (CTC * (V2 - V1)) / (100 * (PRNT/100))
+    """
+    NC = (CTC * (V_desejado - V_atual)) / (100 * (PRNT / 100))
+    return max(NC, 0)  # evita valores negativos
+
+
+def calcular_recomendacao(pH, CTC, Ca, Mg, K, profundidade_cm, area_ha, PRNT, V_desejado):
+    acidez = classificar_acidez(pH)
+    SB, V_atual = calcular_saturacao_base(Ca, Mg, K, CTC)
+    NC_20cm = necessidade_de_calagem(CTC, V_atual, V_desejado, PRNT)
+
+    # Ajuste pela profundidade (20 cm como referência)
+    fator_profundidade = profundidade_cm / 20
+    NC_ajustado = NC_20cm * fator_profundidade
+
+    # Quantidade total para a área
+    total_ton = NC_ajustado * area_ha
+
+    return {
+        "pH": pH,
+        "Classificação do solo": acidez,
+        "CTC (cmolc/dm³)": CTC,
+        "Ca (cmolc/dm³)": Ca,
+        "Mg (cmolc/dm³)": Mg,
+        "K (mg/dm³)": K,
+        "Soma de Bases (SB)": round(SB, 2),
+        "V% atual": round(V_atual, 2),
+        "V% desejado": V_desejado,
+        "PRNT (%)": PRNT,
+        "Necessidade de Calagem (ton/ha)": round(NC_ajustado, 2),
+        "Total de calcário para a área (ton)": round(total_ton, 2)
+    }
+
+
+# -----------------------------
+# FUNÇÕES DE ENTRADA
+# -----------------------------
+
+def pedir_float(texto):
+    return float(input(f"{texto}: ").replace(",", "."))
+
+def pedir_int(texto):
+    return int(input(f"{texto}: "))
+
+
+# -----------------------------
+# PROGRAMA PRINCIPAL
+# -----------------------------
+
+if __name__ == "__main__":
+    print("\n=== CALCULADORA DE RECOMENDAÇÃO DE CALAGEM ===\n")
+
+    pH = pedir_float("Informe o pH do solo")
+    CTC = pedir_float("Informe a CTC a pH 7 (cmolc/dm³)")
+    Ca = pedir_float("Informe Ca (cmolc/dm³)")
+    Mg = pedir_float("Informe Mg (cmolc/dm³)")
+    K = pedir_float("Informe K (mg/dm³)")
+    profundidade_cm = pedir_int("Profundidade considerada (cm) — ex: 20")
+    area_ha = pedir_float("Informe a área analisada (ha)")
+    PRNT = pedir_float("Informe o PRNT do calcário (%)")
+    V_desejado = pedir_float("Informe o V% desejado")
+
+    resultados = calcular_recomendacao(
+        pH=pH,
+        CTC=CTC,
+        Ca=Ca,
+        Mg=Mg,
+        K=K,
+        profundidade_cm=profundidade_cm,
+        area_ha=area_ha,
+        PRNT=PRNT,
+        V_desejado=V_desejado
+    )
+
+    print("\n----- RESULTADO FINAL -----\n")
+    for chave, valor in resultados.items():
+        print(f"{chave}: {valor}")
+
+    print("\n-----------------------------------------")
+    print(" Cálculo concluído com sucesso.")
+    print("-----------------------------------------\n")
